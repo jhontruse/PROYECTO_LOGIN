@@ -1,8 +1,8 @@
 const { matchedData } = require("express-validator");
 const roles = require("../models/roles");
 const models = require("../models");
-const { Model } = require("sequelize");
-const userRol = require("../models/users_rol");
+const { encrypt } = require("../utils/handlePassword");
+const tokenSign = require("../utils/handleJWT");
 
 /**
 //!SECTION Listar usuarios
@@ -38,32 +38,28 @@ const createItems = async (req, res) => {
     await models.userModel.sync();
     await models.rolModel.sync();
     await models.userRolModel.sync();
-    const user = await models.userModel
-      .create({
-        nombre: req.body.nombre,
-        apellido: req.body.apellido,
-        username: req.body.username,
-        email: req.body.email,
-        password: req.body.password,
-        fecnacimiento: req.body.fecnacimiento,
-        estado: req.body.estado,
-      })
-      .then(async (user) => {
-        req.body.rol.forEach(async (element) => {
-          console.log(
-            "🚀 ~ file: user.js:53 ~ req.body.rol.forEach ~ element",
-            element
-          );
-          const user_rol = await models.userRolModel.create({
-            id_user: user.id_user,
-            id_rol: element.id_rol,
-          });
-        });
-        res.status(200).json(user);
-      })
-      .catch((err) => {
-        res.json(err);
-      });
+    const passwordEncrypt = await encrypt(req.body.password);
+    const rol_asig = req.body.rol.id_rol;
+    const body = await models.userModel.create({
+      nombre: req.body.nombre,
+      apellido: req.body.apellido,
+      username: req.body.username,
+      email: req.body.email,
+      password: passwordEncrypt,
+      fecnacimiento: req.body.fecnacimiento,
+      estado: req.body.estado,
+    });
+    await models.userRolModel.create({
+      id_user: body.id_user,
+      id_rol: rol_asig,
+    });
+    body.set("password", undefined, { strict: false });
+    const token = await tokenSign(rol_asig);
+    const dataUser = {
+      token: token,
+      user: body,
+    };
+    res.status(200).json(dataUser);
   } catch (e) {
     console.log("------------------------------------------------------");
     console.log("ERROR-createItems");

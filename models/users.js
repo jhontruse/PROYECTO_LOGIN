@@ -81,10 +81,6 @@ User.init(
         notNull: {
           msg: "El campo obligatorio",
         },
-        isAlphanumeric: {
-          args: true,
-          msg: "El campo debe ser alfanumerico",
-        },
       },
     },
     fecnacimiento: {
