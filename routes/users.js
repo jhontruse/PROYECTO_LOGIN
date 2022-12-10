@@ -5,12 +5,14 @@ const {
   createItems,
   getPaginacionItem,
   getItem,
+  loginCtrl,
 } = require("../controllers/user");
-const validatorRegister = require("../validators/users");
+const { validatorRegister, validatorLogin } = require("../validators/users");
 
 router.get("/", getItems);
 router.post("/", validatorRegister, createItems);
 router.get("/:offset/:limit", getPaginacionItem);
 router.get("/:id", getItem);
+router.post("/login", validatorLogin, loginCtrl);
 
 module.exports = router;

@@ -1,8 +1,10 @@
 const { matchedData } = require("express-validator");
 const roles = require("../models/roles");
 const models = require("../models");
-const { encrypt } = require("../utils/handlePassword");
+const { encrypt, compare } = require("../utils/handlePassword");
 const tokenSign = require("../utils/handleJWT");
+const { QueryTypes } = require("sequelize");
+const sequelize = require("../db/mysql");
 
 /**
 //!SECTION Listar usuarios
@@ -124,4 +126,64 @@ const getItem = async (req, res) => {
   }
 };
 
-module.exports = { getItems, createItems, getPaginacionItem, getItem };
+const loginCtrl = async (req, res) => {
+  try {
+    console.log("🚀 ~ file: user.js:132 ~ loginCtrl ~ req", req.body);
+    const user = await models.userModel.findOne({
+      where: { username: req.body.username },
+    });
+    console.log("🚀 ~ file: user.js:136 ~ loginCtrl ~ user", user);
+    const prueba = await sequelize.query(
+      "SELECT A.id_rol FROM  db_pry_login.user_rols A, db_pry_login.users B WHERE A.id_user=B.id_user AND B.id_user = ?",
+      {
+        replacements: [user.dataValues.id_user],
+        type: QueryTypes.SELECT,
+      }
+    );
+    console.log(
+      "🚀 ~ file: user.js:139 ~ loginCtrl ~ prueba",
+      JSON.stringify(prueba[0].id_rol, null, null)
+    );
+    const rol_usuario = JSON.stringify(prueba[0].id_rol, null, null);
+    console.log(
+      "🚀 ~ file: user.js:148 ~ loginCtrl ~ rol_usuario",
+      rol_usuario
+    );
+    if (!user) {
+      res.status(404).send({ mensaje: "No existe usuario" });
+      return;
+    }
+    console.log("PASO 1");
+    const hashPassword = user.get("password");
+    console.log(
+      "🚀 ~ file: user.js:158 ~ loginCtrl ~ hashPassword",
+      hashPassword
+    );
+    const check = await compare(req.body.password, hashPassword);
+    console.log("PASO 2");
+    console.log("🚀 ~ file: user.js:163 ~ loginCtrl ~ check", check);
+    if (!check) {
+      res.status(401).send({ mensaje: "Password Invalido" });
+      return;
+    }
+    console.log("PASO 3");
+    user.set("password", undefined, { strict: false });
+    console.log("PASO 2");
+    const token = await tokenSign(1);
+    const dataUser = {
+      token: token,
+      user: user,
+    };
+    res.status(200).send(dataUser);
+  } catch (error) {
+    res.status(500).send({ mensaje: error });
+  }
+};
+
+module.exports = {
+  getItems,
+  createItems,
+  getPaginacionItem,
+  getItem,
+  loginCtrl,
+};
